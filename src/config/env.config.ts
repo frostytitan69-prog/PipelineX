@@ -14,6 +14,11 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(16, 'JWT_REFRESH_SECRET must be at least 16 characters'),
   JWT_ACCESS_EXPIRATION: z.string().default('15m'),
   JWT_REFRESH_EXPIRATION: z.string().default('7d'),
+  R2_ACCESS_KEY_ID: z.string().default('mock-access-key-id'),
+  R2_SECRET_ACCESS_KEY: z.string().default('mock-secret-access-key'),
+  R2_BUCKET_NAME: z.string().default('pipelinex-uploads'),
+  R2_ENDPOINT: z.string().default('http://localhost:4566'),
+  R2_REGION: z.string().default('auto'),
   ALLOWED_ORIGINS: z.string().default('http://localhost:3000'),
 });
 

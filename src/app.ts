@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
 import healthRoutes from './routes/health.routes';
 import authRoutes from './routes/auth.routes';
+import fileRoutes from './routes/file.routes';
 import { swaggerSpec } from './config/swagger.config';
 import { errorHandler } from './common/middleware/error-handler.middleware';
 import { loggerMiddleware } from './common/middleware/logger.middleware';
@@ -22,13 +23,14 @@ export const createApp = (): Application => {
   // Swagger Documentation UI
   app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-  // Health check routes (available at /api/v1/health, /api/health, and /health for convenience)
+  // Health check routes
   app.use('/api/v1', healthRoutes);
   app.use('/api', healthRoutes);
   app.use('/', healthRoutes);
 
-  // Auth Routes
+  // API Domain Routes
   app.use('/api/v1/auth', authRoutes);
+  app.use('/api/v1/files', fileRoutes);
 
   // 404 Not Found Fallback Handler
   app.use((req: Request, _res: Response, next: NextFunction) => {
