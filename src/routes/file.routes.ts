@@ -12,6 +12,7 @@ router.post('/upload', uploadMiddleware, controller.upload);
 router.get('/', controller.listFiles);
 router.get('/:id', controller.getMetadata);
 router.get('/:id/status', controller.getStatus);
+router.get('/:id/result', controller.getResult);
 router.get('/:id/download-url', controller.getDownloadUrl);
 router.delete('/:id', controller.delete);
 

@@ -38,6 +38,21 @@ export class FileController {
     }
   };
 
+  public getResult = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        return next(new AppError('User authentication context missing', 401, 'https://pipelinex.dev/errors/UNAUTHORIZED'));
+      }
+
+      const result = await fileService.getFileResult(req.user.userId, req.params.id);
+      res.status(200).json({
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   public listFiles = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       if (!req.user) {

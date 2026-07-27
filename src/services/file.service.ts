@@ -2,7 +2,13 @@ import crypto from 'crypto';
 import { prisma } from '../database/prisma.service';
 import { storageService } from './storage.service';
 import { queueService } from './queue.service';
-import { FileUploadResponseDto, FileStatusResponseDto, FileMetadataDto, DownloadUrlResponseDto } from '../dtos/file.dto';
+import {
+  FileUploadResponseDto,
+  FileStatusResponseDto,
+  ProcessingResultResponseDto,
+  FileMetadataDto,
+  DownloadUrlResponseDto,
+} from '../dtos/file.dto';
 import { AppError } from '../common/errors/app-error';
 
 export class FileService {
@@ -49,7 +55,7 @@ export class FileService {
       throw new AppError('Failed to enqueue background processing job', 500, 'https://pipelinex.dev/errors/QUEUE_ERROR');
     }
 
-    // 4. Return immediate 201 response
+    // 4. Return immediate response
     return {
       fileId: dbFile.id,
       originalName: dbFile.originalName,
@@ -66,6 +72,32 @@ export class FileService {
     return {
       fileId: file.id,
       status: file.status,
+    };
+  }
+
+  public async getFileResult(userId: string, fileId: string): Promise<ProcessingResultResponseDto> {
+    const file = await prisma.file.findFirst({
+      where: { id: fileId, userId },
+      include: { processingResult: true },
+    });
+
+    if (!file) {
+      throw new AppError('File not found or access denied', 404, 'https://pipelinex.dev/errors/NOT_FOUND');
+    }
+
+    let thumbnailUrl: string | null = null;
+    if (file.processingResult?.thumbnailStorageKey) {
+      thumbnailUrl = await storageService.getSignedDownloadUrl(file.processingResult.thumbnailStorageKey, 900);
+    }
+
+    return {
+      fileId: file.id,
+      status: file.status,
+      processingTimeMs: file.processingResult?.processingTimeMs ?? null,
+      metadata: (file.processingResult?.metadata as Record<string, unknown>) ?? null,
+      pageCount: file.processingResult?.pageCount ?? null,
+      thumbnailUrl,
+      textContent: file.processingResult?.textContent ?? null,
     };
   }
 

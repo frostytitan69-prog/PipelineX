@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../errors/app-error';
 import { env } from '../../config/env.config';
+import { logger } from '../utils/logger.util';
 
 export const errorHandler = (
   err: Error | AppError,
@@ -18,7 +19,11 @@ export const errorHandler = (
       ? 'An internal error occurred. Please contact support if the issue persists.'
       : err.message || 'An unexpected error occurred';
 
-  console.error(`[ERROR] ${req.method} ${req.originalUrl} (${statusCode}):`, err);
+  logger.error(`[ERROR] ${req.method} ${req.originalUrl} (${statusCode}): ${err.message}`, {
+    stack: err.stack,
+    type,
+    instance: req.originalUrl,
+  });
 
   res.status(statusCode).json({
     type,

@@ -5,6 +5,7 @@ import swaggerUi from 'swagger-ui-express';
 import healthRoutes from './routes/health.routes';
 import authRoutes from './routes/auth.routes';
 import fileRoutes from './routes/file.routes';
+import adminRoutes from './routes/admin.routes';
 import { swaggerSpec } from './config/swagger.config';
 import { errorHandler } from './common/middleware/error-handler.middleware';
 import { loggerMiddleware } from './common/middleware/logger.middleware';
@@ -31,6 +32,7 @@ export const createApp = (): Application => {
   // API Domain Routes
   app.use('/api/v1/auth', authRoutes);
   app.use('/api/v1/files', fileRoutes);
+  app.use('/api/v1/admin', adminRoutes);
 
   // 404 Not Found Fallback Handler
   app.use((req: Request, _res: Response, next: NextFunction) => {

@@ -39,6 +39,29 @@ const options: swaggerJsdoc.Options = {
             updatedAt: { type: 'string', format: 'date-time', example: '2026-07-27T20:50:00.000Z' },
           },
         },
+        AdminDashboardStats: {
+          type: 'object',
+          properties: {
+            totalUsers: { type: 'integer', example: 42 },
+            totalFiles: { type: 'integer', example: 128 },
+            totalJobs: { type: 'integer', example: 128 },
+            completedJobs: { type: 'integer', example: 120 },
+            failedJobs: { type: 'integer', example: 2 },
+            processingJobs: { type: 'integer', example: 6 },
+            storageUsedBytes: { type: 'integer', example: 104857600 },
+            averageProcessingTimeMs: { type: 'integer', example: 345 },
+          },
+        },
+        AdminQueueStats: {
+          type: 'object',
+          properties: {
+            waiting: { type: 'integer', example: 0 },
+            active: { type: 'integer', example: 1 },
+            completed: { type: 'integer', example: 120 },
+            failed: { type: 'integer', example: 2 },
+            delayed: { type: 'integer', example: 0 },
+          },
+        },
         FileUploadResponse: {
           type: 'object',
           properties: {
@@ -51,49 +74,97 @@ const options: swaggerJsdoc.Options = {
             uploadedAt: { type: 'string', format: 'date-time', example: '2026-07-27T21:20:00.000Z' },
           },
         },
-        FileStatusResponse: {
-          type: 'object',
-          properties: {
-            fileId: { type: 'string', format: 'uuid', example: 'd3b07384-d113-40a4-8093-5c080036ce92' },
-            status: { type: 'string', enum: ['UPLOADED', 'PROCESSING', 'COMPLETED', 'FAILED'], example: 'COMPLETED' },
-          },
-        },
-        FileMetadata: {
-          type: 'object',
-          properties: {
-            id: { type: 'string', format: 'uuid', example: 'd3b07384-d113-40a4-8093-5c080036ce92' },
-            userId: { type: 'string', format: 'uuid', example: 'f47ac10b-58cc-4372-a567-0e02b2c3d479' },
-            originalName: { type: 'string', example: 'sample_document.pdf' },
-            mimeType: { type: 'string', example: 'application/pdf' },
-            size: { type: 'integer', example: 1048576 },
-            storageKey: { type: 'string', example: 'uploads/f47ac10b-58cc-4372-a567-0e02b2c3d479/d3b07384.pdf' },
-            fileHash: { type: 'string', example: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' },
-            status: { type: 'string', enum: ['UPLOADED', 'PROCESSING', 'COMPLETED', 'FAILED'], example: 'COMPLETED' },
-            createdAt: { type: 'string', format: 'date-time', example: '2026-07-27T21:20:00.000Z' },
-          },
-        },
-        DownloadUrlResponse: {
-          type: 'object',
-          properties: {
-            fileId: { type: 'string', format: 'uuid', example: 'd3b07384-d113-40a4-8093-5c080036ce92' },
-            downloadUrl: { type: 'string', example: 'https://pipelinex-uploads.r2.cloudflarestorage.com/uploads/...?X-Amz-Signature=...' },
-            expiresInSeconds: { type: 'integer', example: 900 },
-          },
-        },
         ErrorResponse: {
           type: 'object',
           properties: {
-            type: { type: 'string', example: 'https://pipelinex.dev/errors/INVALID_FILE_TYPE' },
-            title: { type: 'string', example: 'Invalid File Type' },
-            status: { type: 'integer', example: 400 },
-            detail: { type: 'string', example: 'Only PNG, JPEG, WEBP, PDF, and TXT files are supported.' },
-            instance: { type: 'string', example: '/api/v1/files/upload' },
+            type: { type: 'string', example: 'https://pipelinex.dev/errors/FORBIDDEN' },
+            title: { type: 'string', example: 'Forbidden' },
+            status: { type: 'integer', example: 403 },
+            detail: { type: 'string', example: 'Forbidden: You do not have sufficient permissions to access this resource' },
+            instance: { type: 'string', example: '/api/v1/admin/dashboard' },
             timestamp: { type: 'string', format: 'date-time', example: '2026-07-27T21:20:00.000Z' },
           },
         },
       },
     },
     paths: {
+      '/admin/dashboard': {
+        get: {
+          summary: 'Get admin dashboard statistics (ADMIN only)',
+          tags: ['Admin'],
+          security: [{ BearerAuth: [] }],
+          responses: {
+            200: {
+              description: 'Dashboard statistics summary',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: { $ref: '#/components/schemas/AdminDashboardStats' },
+                    },
+                  },
+                },
+              },
+            },
+            403: { description: 'Forbidden (Requires ADMIN role)' },
+          },
+        },
+      },
+      '/admin/queue': {
+        get: {
+          summary: 'Get BullMQ queue telemetry statistics (ADMIN only)',
+          tags: ['Admin'],
+          security: [{ BearerAuth: [] }],
+          responses: {
+            200: {
+              description: 'Queue job counts',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: { $ref: '#/components/schemas/AdminQueueStats' },
+                    },
+                  },
+                },
+              },
+            },
+            403: { description: 'Forbidden' },
+          },
+        },
+      },
+      '/admin/jobs': {
+        get: {
+          summary: 'List execution jobs with pagination and status filter (ADMIN only)',
+          tags: ['Admin'],
+          security: [{ BearerAuth: [] }],
+          parameters: [
+            { name: 'status', in: 'query', schema: { type: 'string', enum: ['UPLOADED', 'PROCESSING', 'COMPLETED', 'FAILED'] } },
+            { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 } },
+          ],
+          responses: {
+            200: { description: 'Paginated list of jobs' },
+            403: { description: 'Forbidden' },
+          },
+        },
+      },
+      '/admin/jobs/{jobId}/retry': {
+        post: {
+          summary: 'Manually retry a failed background job (ADMIN only)',
+          tags: ['Admin'],
+          security: [{ BearerAuth: [] }],
+          parameters: [
+            { name: 'jobId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          responses: {
+            200: { description: 'Job re-queued successfully' },
+            403: { description: 'Forbidden' },
+            404: { description: 'Job not found' },
+          },
+        },
+      },
       '/files/upload': {
         post: {
           summary: 'Upload a file and enqueue background processing job',
@@ -114,138 +185,8 @@ const options: swaggerJsdoc.Options = {
             },
           },
           responses: {
-            201: {
-              description: 'File uploaded and job queued successfully',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      message: { type: 'string', example: 'File uploaded and job queued successfully' },
-                      data: { $ref: '#/components/schemas/FileUploadResponse' },
-                    },
-                  },
-                },
-              },
-            },
-            400: { description: 'Invalid file format or size exceeds 20MB' },
-            401: { description: 'Unauthorized' },
-          },
-        },
-      },
-      '/files/{id}/status': {
-        get: {
-          summary: 'Get background job processing status for file',
-          tags: ['Files'],
-          security: [{ BearerAuth: [] }],
-          parameters: [
-            { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
-          ],
-          responses: {
-            200: {
-              description: 'Current file status (UPLOADED, PROCESSING, COMPLETED, FAILED)',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      data: { $ref: '#/components/schemas/FileStatusResponse' },
-                    },
-                  },
-                },
-              },
-            },
-            404: { description: 'File not found' },
-          },
-        },
-      },
-      '/files': {
-        get: {
-          summary: 'List user uploaded files',
-          tags: ['Files'],
-          security: [{ BearerAuth: [] }],
-          responses: {
-            200: {
-              description: 'List of files owned by user',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      data: {
-                        type: 'array',
-                        items: { $ref: '#/components/schemas/FileMetadata' },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-            401: { description: 'Unauthorized' },
-          },
-        },
-      },
-      '/files/{id}': {
-        get: {
-          summary: 'Get file metadata by ID',
-          tags: ['Files'],
-          security: [{ BearerAuth: [] }],
-          parameters: [
-            { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
-          ],
-          responses: {
-            200: {
-              description: 'File metadata',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      data: { $ref: '#/components/schemas/FileMetadata' },
-                    },
-                  },
-                },
-              },
-            },
-            404: { description: 'File not found' },
-          },
-        },
-        delete: {
-          summary: 'Delete file from R2 object storage and database',
-          tags: ['Files'],
-          security: [{ BearerAuth: [] }],
-          parameters: [
-            { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
-          ],
-          responses: {
-            200: { description: 'File deleted successfully' },
-            404: { description: 'File not found' },
-          },
-        },
-      },
-      '/files/{id}/download-url': {
-        get: {
-          summary: 'Generate temporary presigned download URL',
-          tags: ['Files'],
-          security: [{ BearerAuth: [] }],
-          parameters: [
-            { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
-          ],
-          responses: {
-            200: {
-              description: 'Presigned download URL',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      data: { $ref: '#/components/schemas/DownloadUrlResponse' },
-                    },
-                  },
-                },
-              },
-            },
-            404: { description: 'File not found' },
+            201: { description: 'File uploaded and job queued successfully' },
+            400: { description: 'Invalid file format' },
           },
         },
       },

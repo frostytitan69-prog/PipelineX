@@ -34,19 +34,36 @@ model User {
 }
 
 model File {
-  id           String     @id @default(uuid())
-  userId       String     @map("user_id")
-  originalName String     @map("original_name")
-  mimeType     String     @map("mime_type")
-  size         Int
-  storageKey   String     @map("storage_key")
-  fileHash     String?    @map("file_hash")
-  status       FileStatus @default(UPLOADED)
-  createdAt    DateTime   @default(now()) @map("created_at")
+  id               String            @id @default(uuid())
+  userId           String            @map("user_id")
+  originalName     String            @map("original_name")
+  mimeType         String            @map("mime_type")
+  size             Int
+  storageKey       String            @map("storage_key")
+  fileHash         String?           @map("file_hash")
+  status           FileStatus        @default(UPLOADED)
+  createdAt        DateTime          @default(now()) @map("created_at")
 
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  processingResult ProcessingResult?
 
   @@map("files")
+}
+
+model ProcessingResult {
+  id                  String   @id @default(uuid())
+  fileId              String   @unique @map("file_id")
+  processingTimeMs    Int      @map("processing_time_ms")
+  thumbnailStorageKey String?  @map("thumbnail_storage_key")
+  metadata            Json?
+  pageCount           Int?     @map("page_count")
+  textContent         String?  @map("text_content")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  file                File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@map("processing_results")
 }
 
 model HealthCheck {

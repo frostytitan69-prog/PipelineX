@@ -32,6 +32,16 @@ export interface FileStatusResponseDto {
   status: 'UPLOADED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 }
 
+export interface ProcessingResultResponseDto {
+  fileId: string;
+  status: 'UPLOADED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  processingTimeMs: number | null;
+  metadata: Record<string, unknown> | null;
+  pageCount: number | null;
+  thumbnailUrl: string | null;
+  textContent: string | null;
+}
+
 export interface FileMetadataDto {
   id: string;
   userId: string;

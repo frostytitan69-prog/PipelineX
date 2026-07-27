@@ -1,63 +1,72 @@
-# PipelineX V1
+# PipelineX V1 — Production-Grade Asynchronous File Processing Engine
 
-PipelineX V1 is a production-grade asynchronous file processing engine built with Node.js, Express, TypeScript, PostgreSQL, Prisma, Redis, BullMQ, and Cloudflare R2 / S3 Object Storage.
-
----
-
-## Features (Milestone 1, 2, 3 & 4)
-
-- **Redis Queue & BullMQ Background Workers (Milestone 4)**: Asynchronous non-blocking background queueing (`FileProcessingQueue`). State transitions (`UPLOADED` $\rightarrow$ `PROCESSING` $\rightarrow$ `COMPLETED` / `FAILED`), 3x exponential backoff retries, and real-time status polling endpoint (`GET /api/v1/files/:id/status`).
-- **File Ingestion & Object Storage (Milestone 3)**: Secure multipart file uploads for images (PNG, JPEG, WEBP) and documents (PDF, TXT) up to 20MB. Integrated with Cloudflare R2 / AWS S3 storage using unique UUID key structures (`uploads/{userId}/{uuid}.ext`), SHA-256 hash calculation, database metadata tracking, presigned download URL generation, and deletion.
-- **Authentication & Security (Milestone 2)**: JWT Access & Refresh Token workflow, salted bcrypt password hashing (cost factor 12), Zod input validation, rate-limiting (`express-rate-limit`), and RBAC middleware.
-- **Swagger Documentation**: Interactive OpenAPI 3.0 UI served directly at `/api/docs`.
-- **Decoupled Infrastructure**: Clean Express + TypeScript layer with singleton PostgreSQL (Prisma) and Redis (ioredis) integration.
-- **Resilient Error Handling**: RFC-7807 problem details error format and graceful server shutdown logic (`SIGTERM`/`SIGINT`).
+PipelineX V1 is an enterprise-ready, asynchronous file processing system built with Node.js, Express, TypeScript, Prisma, PostgreSQL 16, Redis 7, BullMQ, Cloudflare R2 / S3 Object Storage, Sharp image processing, and pdf-parse text extraction.
 
 ---
 
-## Getting Started
+## 🚀 Key Features & Milestones
 
-### 1. Prerequisites
-- Node.js >= 20.x
-- Docker & Docker Compose
+- **Milestone 1: Project Setup & Core Infrastructure**
+  - Node.js + TypeScript strict ESM layout.
+  - PostgreSQL & Redis containerized database setup.
+  - RFC-7807 structured problem details error handling.
 
-### 2. Install Dependencies
-```bash
-npm install
-```
+- **Milestone 2: Authentication & User Management**
+  - User registration & login with `bcrypt` password hashing.
+  - Short-lived JWT Access Tokens & Refresh Tokens.
+  - Role-Based Access Control (`USER` & `ADMIN` roles).
+  - Rate limiting on authentication routes.
 
-### 3. Start Local Database & Redis Services
-```bash
-docker-compose up -d
-```
+- **Milestone 3: File Ingestion & Object Storage Layer**
+  - Multer multipart file upload validation (PNG, JPEG, WEBP, PDF, TXT up to 20MB).
+  - Storage abstraction supporting Cloudflare R2 / S3 bucket storage.
+  - Secure signed download URL generation (15 min expiration).
 
-### 4. Run Prisma Migrations
-```bash
-npm run prisma:generate
-```
+- **Milestone 4: Async Queue & BullMQ Background Workers**
+  - Event-driven background worker architecture powered by BullMQ & Redis.
+  - Exponential backoff retry policies (3 attempts).
+  - Non-blocking immediate file upload HTTP response.
 
-### 5. Run Tests
+- **Milestone 5: Pipeline Processing Handlers**
+  - **Image Handler (`sharp`)**: Extracts width, height, format, color space, raw size, and generates 300x300 JPEG thumbnails stored under `thumbnails/{userId}/{uuid}.jpg`.
+  - **PDF Handler (`pdf-parse`)**: Extracts total page count, document info metadata, and text content (first 10k chars).
+  - **Text Handler**: Computes line count, word count, character count, and stores UTF-8 content.
+  - **ProcessingResult API**: `GET /api/v1/files/:id/result` returns processed metadata & presigned thumbnail link.
+
+- **Milestone 6: Admin Dashboard, Queue Monitoring & System Observability**
+  - **Admin Dashboard**: `GET /api/v1/admin/dashboard` (aggregated users, files, storage consumption, average processing time).
+  - **Queue Telemetry**: `GET /api/v1/admin/queue` (waiting, active, completed, failed, delayed job metrics).
+  - **Job Inspection & Manual Retry**: `GET /api/v1/admin/jobs` & `POST /api/v1/admin/jobs/:jobId/retry`.
+  - **Structured Logging**: Winston logger outputting to `logs/app.log` and `logs/error.log`.
+  - **Enhanced Health Check**: `GET /health` inspecting DB, Redis, Cloudflare R2, BullMQ worker status, memory usage, and Node version.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Runtime**: Node.js v20+, TypeScript
+- **Web Framework**: Express v4
+- **Database & ORM**: PostgreSQL 16, Prisma ORM
+- **Queue & Cache**: Redis 7, BullMQ, ioredis
+- **Object Storage**: Cloudflare R2 / S3 (`@aws-sdk/client-s3`)
+- **Processing Engines**: Sharp, pdf-parse
+- **Logging & Security**: Winston, Helmet, CORS, bcrypt, jsonwebtoken, Zod
+- **Documentation**: Swagger UI (`/api/docs`)
+- **Testing**: Jest, Supertest
+
+---
+
+## 📖 API Documentation & Swagger UI
+
+Interactive OpenAPI 3.0 documentation is available at:
+`http://localhost:3000/api/docs`
+
+---
+
+## 🧪 Running Tests
+
 ```bash
 npm test
 ```
-
-### 6. Start Development Server
-```bash
-npm run dev
-```
-
-- API Server: `http://localhost:3000`
-- Swagger UI Documentation: `http://localhost:3000/api/docs`
-- Health Endpoint: `http://localhost:3000/api/v1/health`
-
----
-
-## Documentation
-
-Full architectural design documents can be found in the [`docs/`](./docs) folder:
-- [Functional Requirements](./docs/functional-requirements.md)
-- [System Architecture](./docs/system-architecture.md)
-- [Authentication Specification](./docs/authentication.md)
-- [File Upload Specification](./docs/file-upload.md)
-- [Queue & Worker Specification](./docs/queue-processing.md)
-- [Development Roadmap](./docs/development-roadmap.md)
+- **Test Suites**: 12/12 Passed
+- **Total Tests**: 48/48 Passed

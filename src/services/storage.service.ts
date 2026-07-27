@@ -2,6 +2,7 @@ import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } fro
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import crypto from 'crypto';
 import path from 'path';
+import { Readable } from 'stream';
 import { env } from '../config/env.config';
 import { AppError } from '../common/errors/app-error';
 
@@ -30,6 +31,11 @@ export class StorageService {
     return `uploads/${userId}/${uniqueId}${ext}`;
   }
 
+  public generateThumbnailKey(userId: string): string {
+    const uniqueId = crypto.randomUUID();
+    return `thumbnails/${userId}/${uniqueId}.jpg`;
+  }
+
   public async uploadFile(key: string, buffer: Buffer, mimeType: string): Promise<string> {
     if (env.NODE_ENV === 'test') {
       this.testMemoryStore.set(key, { buffer, mimeType });
@@ -50,6 +56,40 @@ export class StorageService {
       console.error('❌ Cloudflare R2 / S3 Upload Error:', error);
       throw new AppError(
         'Failed to store file in object storage service',
+        500,
+        'https://pipelinex.dev/errors/STORAGE_ERROR'
+      );
+    }
+  }
+
+  public async getFileBuffer(key: string): Promise<Buffer> {
+    if (env.NODE_ENV === 'test') {
+      const item = this.testMemoryStore.get(key);
+      if (!item) {
+        throw new AppError('File not found in test storage', 404, 'https://pipelinex.dev/errors/NOT_FOUND');
+      }
+      return item.buffer;
+    }
+
+    try {
+      const command = new GetObjectCommand({
+        Bucket: this.bucketName,
+        Key: key,
+      });
+
+      const response = await this.s3Client.send(command);
+      const stream = response.Body as Readable;
+
+      const chunks: Buffer[] = [];
+      for await (const chunk of stream) {
+        chunks.push(Buffer.from(chunk));
+      }
+
+      return Buffer.concat(chunks);
+    } catch (error) {
+      console.error('❌ Cloudflare R2 / S3 Download Buffer Error:', error);
+      throw new AppError(
+        'Failed to fetch file buffer from object storage',
         500,
         'https://pipelinex.dev/errors/STORAGE_ERROR'
       );
