@@ -6,13 +6,17 @@ const globalForRedis = globalThis as unknown as {
 };
 
 const createRedisInstance = (): Redis => {
+  const isTest = env.NODE_ENV === 'test';
+
   const client = new Redis({
     host: env.REDIS_HOST,
     port: env.REDIS_PORT,
     password: env.REDIS_PASSWORD || undefined,
     maxRetriesPerRequest: null, // Required by BullMQ
     lazyConnect: false,
-    enableOfflineQueue: true,
+    enableOfflineQueue: !isTest,
+    connectTimeout: isTest ? 1000 : 10000,
+    retryStrategy: isTest ? () => null : (times) => Math.min(times * 100, 3000),
   });
 
   client.on('connect', () => {
@@ -20,7 +24,9 @@ const createRedisInstance = (): Redis => {
   });
 
   client.on('error', (err) => {
-    console.error('❌ Redis Connection Error:', err.message);
+    if (env.NODE_ENV !== 'test') {
+      console.error('❌ Redis Connection Error:', err.message);
+    }
   });
 
   return client;

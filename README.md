@@ -4,12 +4,12 @@ PipelineX V1 is a production-grade asynchronous file processing engine built wit
 
 ---
 
-## Architecture Highlights
+## Features (Milestone 1 & 2)
 
-- **Decoupled Architecture**: API Service delegates heavy computations (image resizing, PDF text extraction, word frequency analysis) to BullMQ background workers.
-- **Reliability & Resiliency**: Built-in exponential backoff retries and Dead Letter Queue (DLQ) tracking.
-- **Type Safety**: Strictly typed TypeScript codebase with Zod environment & DTO validation.
-- **Containerized Stack**: Docker Compose for local PostgreSQL 16 and Redis 7 setups.
+- **Authentication & Security**: JWT Access & Refresh Token workflow, salted bcrypt password hashing (cost factor 12), Zod input validation, rate-limiting (`express-rate-limit`), and RBAC middleware.
+- **Swagger Documentation**: Interactive OpenAPI 3.0 UI served directly at `/api/docs`.
+- **Decoupled Infrastructure**: Clean Express + TypeScript layer with singleton PostgreSQL (Prisma) and Redis (ioredis) integration.
+- **Resilient Error Handling**: RFC-7807 problem details error format and graceful server shutdown logic (`SIGTERM`/`SIGINT`).
 
 ---
 
@@ -34,13 +34,19 @@ docker-compose up -d
 npm run prisma:generate
 ```
 
-### 5. Start Development Server
+### 5. Run Tests
+```bash
+npm test
+```
+
+### 6. Start Development Server
 ```bash
 npm run dev
 ```
 
-The server will start at `http://localhost:3000`. You can test the health endpoint at:
-`http://localhost:3000/api/v1/health`
+- API Server: `http://localhost:3000`
+- Swagger UI Documentation: `http://localhost:3000/api/docs`
+- Health Endpoint: `http://localhost:3000/api/v1/health`
 
 ---
 
@@ -49,4 +55,5 @@ The server will start at `http://localhost:3000`. You can test the health endpoi
 Full architectural design documents can be found in the [`docs/`](./docs) folder:
 - [Functional Requirements](./docs/functional-requirements.md)
 - [System Architecture](./docs/system-architecture.md)
+- [Authentication Specification](./docs/authentication.md)
 - [Development Roadmap](./docs/development-roadmap.md)

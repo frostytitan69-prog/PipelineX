@@ -1,7 +1,10 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import swaggerUi from 'swagger-ui-express';
 import healthRoutes from './routes/health.routes';
+import authRoutes from './routes/auth.routes';
+import { swaggerSpec } from './config/swagger.config';
 import { errorHandler } from './common/middleware/error-handler.middleware';
 import { loggerMiddleware } from './common/middleware/logger.middleware';
 import { AppError } from './common/errors/app-error';
@@ -16,8 +19,16 @@ export const createApp = (): Application => {
   app.use(express.urlencoded({ extended: true }));
   app.use(loggerMiddleware);
 
-  // API Routes
+  // Swagger Documentation UI
+  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+  // Health check routes (available at /api/v1/health, /api/health, and /health for convenience)
   app.use('/api/v1', healthRoutes);
+  app.use('/api', healthRoutes);
+  app.use('/', healthRoutes);
+
+  // Auth Routes
+  app.use('/api/v1/auth', authRoutes);
 
   // 404 Not Found Fallback Handler
   app.use((req: Request, _res: Response, next: NextFunction) => {

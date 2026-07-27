@@ -7,7 +7,23 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// Baseline placeholder model for Prisma initialization
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role     @default(USER)
+  refreshToken String?  @map("refresh_token")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
 model HealthCheck {
   id        String   @id @default(uuid())
   status    String
