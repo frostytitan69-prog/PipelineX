@@ -6,6 +6,7 @@ dotenv.config();
 const envSchema = z.object({
   PORT: z.string().default('3000').transform((val) => parseInt(val, 10)),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  ENABLE_WORKER: z.string().optional().default('true').transform((val) => val !== 'false' && val !== '0'),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   REDIS_URL: z.string().optional().default(''),
   REDIS_HOST: z.string().default('localhost'),

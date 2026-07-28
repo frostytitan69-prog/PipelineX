@@ -3,16 +3,25 @@ import { createApp } from './app';
 import { env } from './config/env.config';
 import { disconnectPrisma } from './database/prisma.service';
 import { disconnectRedis } from './database/redis.service';
-import { fileWorker } from './queue/worker';
+import { startFileWorker } from './queue/worker';
 
 const startServer = (): void => {
   const app = createApp();
   const host = '0.0.0.0';
 
+  let fileWorker: ReturnType<typeof startFileWorker> | undefined;
+
+  if (env.ENABLE_WORKER) {
+    fileWorker = startFileWorker();
+  }
+
   const server: Server = app.listen(env.PORT, host, () => {
     console.log(`🚀 PipelineX Server running on http://${host}:${env.PORT} in ${env.NODE_ENV} mode`);
     console.log(`🏥 Health Check available at http://${host}:${env.PORT}/api/v1/health`);
-    console.log(`⚡ BullMQ File Processing Worker initialized`);
+
+    if (env.ENABLE_WORKER) {
+      console.log('⚡ BullMQ Worker initialized');
+    }
   });
 
   const handleShutdown = async (signal: string): Promise<void> => {
@@ -21,8 +30,10 @@ const startServer = (): void => {
     server.close(async () => {
       console.log('🔒 HTTP server closed');
       try {
-        await fileWorker.close();
-        console.log('👷 BullMQ Worker closed');
+        if (fileWorker) {
+          await fileWorker.close();
+          console.log('👷 BullMQ Worker closed');
+        }
         await disconnectPrisma();
         await disconnectRedis();
         console.log('✅ Graceful shutdown completed cleanly');
