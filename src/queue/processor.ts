@@ -2,6 +2,7 @@ import { Job } from 'bullmq';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../database/prisma.service';
 import { storageService } from '../services/storage.service';
+import { CacheService } from '../services/cache.service';
 import { FileProcessingJobPayload } from './jobs';
 import { ImageHandler } from '../handlers/image.handler';
 import { PdfHandler } from '../handlers/pdf.handler';
@@ -82,6 +83,9 @@ export const processFileJob = async (job: Job<FileProcessingJobPayload>): Promis
       data: { status: 'COMPLETED' },
     });
 
+    // Invalidate Redis user cache when processing completes
+    await CacheService.invalidateUserCache(userId);
+
     console.log(`✅ [WORKER] Processing completed | Job ID: ${job.id} | File ID: ${fileId} | Duration: ${processingTimeMs}ms`);
   } catch (error: unknown) {
     const duration = Date.now() - startTime;
@@ -94,6 +98,7 @@ export const processFileJob = async (job: Job<FileProcessingJobPayload>): Promis
           where: { id: fileId },
           data: { status: 'FAILED' },
         });
+        await CacheService.invalidateUserCache(userId);
       } catch (_updateErr) {
         // File record was deleted from database
       }

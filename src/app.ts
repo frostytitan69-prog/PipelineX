@@ -1,6 +1,7 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
 import swaggerUi from 'swagger-ui-express';
 import healthRoutes from './routes/health.routes';
 import authRoutes from './routes/auth.routes';
@@ -14,9 +15,30 @@ import { AppError } from './common/errors/app-error';
 export const createApp = (): Application => {
   const app: Application = express();
 
-  // Core Security & Utilities Middleware
-  app.use(helmet());
+  // Core Security & Compression Middleware
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+        },
+      },
+      hsts: {
+        maxAge: 31536000, // 1 year
+        includeSubDomains: true,
+        preload: true,
+      },
+      frameguard: { action: 'deny' },
+      noSniff: true,
+      xssFilter: true,
+    })
+  );
+
   app.use(cors());
+  app.use(compression({ threshold: 1024 })); // Compress responses > 1KB
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(loggerMiddleware);

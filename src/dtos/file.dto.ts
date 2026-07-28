@@ -17,6 +17,20 @@ export const fileIdParamSchema = z.object({
   id: z.string().uuid('Invalid file ID format'),
 });
 
+export const fileQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100, 'Maximum limit is 100').default(10),
+  sortBy: z.enum(['createdAt', 'updatedAt', 'size']).default('createdAt'),
+  order: z.enum(['asc', 'desc']).default('desc'),
+  status: z.enum(['UPLOADED', 'PROCESSING', 'COMPLETED', 'FAILED']).optional(),
+  mimeType: z.string().optional(),
+  search: z.string().optional(),
+  fromDate: z.string().datetime({ offset: true }).or(z.string().datetime()).optional(),
+  toDate: z.string().datetime({ offset: true }).or(z.string().datetime()).optional(),
+});
+
+export type FileQueryParams = z.infer<typeof fileQuerySchema>;
+
 export interface FileUploadResponseDto {
   fileId: string;
   originalName: string;

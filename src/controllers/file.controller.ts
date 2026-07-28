@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { fileService } from '../services/file.service';
+import { fileQuerySchema } from '../dtos/file.dto';
 import { AppError } from '../common/errors/app-error';
 
 export class FileController {
@@ -59,9 +60,17 @@ export class FileController {
         return next(new AppError('User authentication context missing', 401, 'https://pipelinex.dev/errors/UNAUTHORIZED'));
       }
 
-      const files = await fileService.getUserFiles(req.user.userId);
+      const queryParams = fileQuerySchema.parse(req.query);
+      const result = await fileService.getUserFiles(req.user.userId, queryParams);
+
       res.status(200).json({
-        data: files,
+        data: result.files,
+        pagination: {
+          total: result.total,
+          page: result.page,
+          limit: result.limit,
+          totalPages: result.totalPages,
+        },
       });
     } catch (error) {
       next(error);

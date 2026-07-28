@@ -1,13 +1,16 @@
 import crypto from 'crypto';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../database/prisma.service';
 import { storageService } from './storage.service';
 import { queueService } from './queue.service';
+import { CacheService } from './cache.service';
 import {
   FileUploadResponseDto,
   FileStatusResponseDto,
   ProcessingResultResponseDto,
   FileMetadataDto,
   DownloadUrlResponseDto,
+  FileQueryParams,
 } from '../dtos/file.dto';
 import { AppError } from '../common/errors/app-error';
 
@@ -39,6 +42,9 @@ export class FileService {
         status: 'UPLOADED',
       },
     });
+
+    // Invalidate Redis user cache on file upload
+    await CacheService.invalidateUserCache(userId);
 
     // 3. Enqueue background job to BullMQ
     let jobId = dbFile.id;
@@ -101,11 +107,51 @@ export class FileService {
     };
   }
 
-  public async getUserFiles(userId: string): Promise<FileMetadataDto[]> {
-    return prisma.file.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-    });
+  public async getUserFiles(
+    userId: string,
+    params?: FileQueryParams
+  ): Promise<{ files: FileMetadataDto[]; total: number; page: number; limit: number; totalPages: number }> {
+    const page = params?.page || 1;
+    const limit = Math.min(params?.limit || 10, 100);
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.FileWhereInput = {
+      userId,
+      ...(params?.status ? { status: params.status } : {}),
+      ...(params?.mimeType ? { mimeType: params.mimeType } : {}),
+      ...(params?.search
+        ? { originalName: { contains: params.search, mode: 'insensitive' } }
+        : {}),
+      ...(params?.fromDate || params?.toDate
+        ? {
+            createdAt: {
+              ...(params.fromDate ? { gte: new Date(params.fromDate) } : {}),
+              ...(params.toDate ? { lte: new Date(params.toDate) } : {}),
+            },
+          }
+        : {}),
+    };
+
+    const sortBy = params?.sortBy || 'createdAt';
+    const order = params?.order || 'desc';
+
+    const [files, total] = await Promise.all([
+      prisma.file.findMany({
+        where,
+        orderBy: { [sortBy]: order },
+        skip,
+        take: limit,
+      }),
+      prisma.file.count({ where }),
+    ]);
+
+    return {
+      files,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit) || 1,
+    };
   }
 
   public async getFileMetadata(userId: string, fileId: string): Promise<FileMetadataDto> {
@@ -143,6 +189,9 @@ export class FileService {
     await prisma.file.delete({
       where: { id: file.id },
     });
+
+    // Invalidate Redis user cache on file deletion
+    await CacheService.invalidateUserCache(userId);
   }
 }
 

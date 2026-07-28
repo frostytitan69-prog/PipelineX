@@ -47,6 +47,11 @@ model File {
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   processingResult ProcessingResult?
 
+  @@index([userId, createdAt])
+  @@index([userId, status])
+  @@index([userId, mimeType])
+  @@index([originalName])
+
   @@map("files")
 }
 

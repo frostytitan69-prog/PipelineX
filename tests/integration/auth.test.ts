@@ -12,7 +12,7 @@ describe('Auth Integration Tests', () => {
 
   it('POST /api/v1/auth/register with invalid email should return 400 Validation Error', async () => {
     const res = await request(app).post('/api/v1/auth/register').send({
-      email: 'not-an-email',
+      email: `not-an-email-${Date.now()}`,
       password: 'short',
     });
 
