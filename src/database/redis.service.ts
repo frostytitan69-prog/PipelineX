@@ -1,11 +1,22 @@
-import Redis from 'ioredis';
+import Redis, { RedisOptions } from 'ioredis';
 import { env } from '../config/env.config';
 
 const globalForRedis = globalThis as unknown as {
   redis: Redis | undefined;
 };
 
-export const getRedisOptions = () => {
+export const getRedisOptions = (): RedisOptions => {
+  if (env.REDIS_URL) {
+    const isRediss = env.REDIS_URL.startsWith('rediss://');
+    const isUpstash = env.REDIS_URL.includes('.upstash.io');
+    const useTls = env.REDIS_TLS || isRediss || isUpstash;
+
+    return {
+      maxRetriesPerRequest: null,
+      tls: useTls ? { rejectUnauthorized: false } : undefined,
+    };
+  }
+
   const isUpstash = env.REDIS_HOST.includes('.upstash.io');
   const useTls = env.REDIS_TLS || isUpstash;
 
@@ -18,17 +29,43 @@ export const getRedisOptions = () => {
   };
 };
 
+export const getBullMQConnection = () => {
+  if (env.REDIS_URL) {
+    const isRediss = env.REDIS_URL.startsWith('rediss://');
+    const isUpstash = env.REDIS_URL.includes('.upstash.io');
+    const useTls = env.REDIS_TLS || isRediss || isUpstash;
+
+    return new Redis(env.REDIS_URL, {
+      maxRetriesPerRequest: null,
+      tls: useTls ? { rejectUnauthorized: false } : undefined,
+    });
+  }
+  return getRedisOptions();
+};
+
 const createRedisInstance = (): Redis => {
   const isTest = env.NODE_ENV === 'test';
   const options = getRedisOptions();
 
-  const client = new Redis({
-    ...options,
-    lazyConnect: false,
-    enableOfflineQueue: !isTest,
-    connectTimeout: isTest ? 1000 : 10000,
-    retryStrategy: isTest ? () => null : (times) => Math.min(times * 100, 3000),
-  });
+  let client: Redis;
+
+  if (env.REDIS_URL) {
+    client = new Redis(env.REDIS_URL, {
+      ...options,
+      lazyConnect: false,
+      enableOfflineQueue: !isTest,
+      connectTimeout: isTest ? 1000 : 10000,
+      retryStrategy: isTest ? () => null : (times) => Math.min(times * 100, 3000),
+    });
+  } else {
+    client = new Redis({
+      ...options,
+      lazyConnect: false,
+      enableOfflineQueue: !isTest,
+      connectTimeout: isTest ? 1000 : 10000,
+      retryStrategy: isTest ? () => null : (times) => Math.min(times * 100, 3000),
+    });
+  }
 
   client.on('connect', () => {
     console.log('⚡ Redis connected successfully');

@@ -15,11 +15,15 @@ services:
         value: 3000
       - key: DATABASE_URL
         sync: false
+      - key: REDIS_URL
+        sync: false
       - key: REDIS_HOST
         sync: false
       - key: REDIS_PORT
         sync: false
       - key: REDIS_PASSWORD
+        sync: false
+      - key: REDIS_TLS
         sync: false
       - key: JWT_ACCESS_SECRET
         sync: false
