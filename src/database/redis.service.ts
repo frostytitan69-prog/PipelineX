@@ -1,86 +1,31 @@
-import Redis, { RedisOptions } from 'ioredis';
+import Redis from 'ioredis';
 import { env } from '../config/env.config';
 
-const globalForRedis = globalThis as unknown as {
-  redis: Redis | undefined;
+const globalForRedis = globalThis as {
+  redis?: Redis;
 };
 
-export const getRedisOptions = (): RedisOptions => {
-  if (env.REDIS_URL) {
-    const isRediss = env.REDIS_URL.startsWith('rediss://');
-    const isUpstash = env.REDIS_URL.includes('.upstash.io');
-    const useTls = env.REDIS_TLS || isRediss || isUpstash;
-
-    return {
-      maxRetriesPerRequest: null,
-      tls: useTls ? { rejectUnauthorized: false } : undefined,
-    };
-  }
-
-  const isUpstash = env.REDIS_HOST.includes('.upstash.io');
-  const useTls = env.REDIS_TLS || isUpstash;
-
-  return {
-    host: env.REDIS_HOST,
-    port: env.REDIS_PORT,
-    password: env.REDIS_PASSWORD || undefined,
-    tls: useTls ? { rejectUnauthorized: false } : undefined,
+const createRedisInstance = () => {
+  const client = new Redis(env.REDIS_URL, {
     maxRetriesPerRequest: null,
-  };
-};
-
-export const getBullMQConnection = () => {
-  if (env.REDIS_URL) {
-    const isRediss = env.REDIS_URL.startsWith('rediss://');
-    const isUpstash = env.REDIS_URL.includes('.upstash.io');
-    const useTls = env.REDIS_TLS || isRediss || isUpstash;
-
-    return new Redis(env.REDIS_URL, {
-      maxRetriesPerRequest: null,
-      tls: useTls ? { rejectUnauthorized: false } : undefined,
-    });
-  }
-  return getRedisOptions();
-};
-
-const createRedisInstance = (): Redis => {
-  const isTest = env.NODE_ENV === 'test';
-  const options = getRedisOptions();
-
-  let client: Redis;
-
-  if (env.REDIS_URL) {
-    client = new Redis(env.REDIS_URL, {
-      ...options,
-      lazyConnect: false,
-      enableOfflineQueue: !isTest,
-      connectTimeout: isTest ? 1000 : 10000,
-      retryStrategy: isTest ? () => null : (times) => Math.min(times * 100, 3000),
-    });
-  } else {
-    client = new Redis({
-      ...options,
-      lazyConnect: false,
-      enableOfflineQueue: !isTest,
-      connectTimeout: isTest ? 1000 : 10000,
-      retryStrategy: isTest ? () => null : (times) => Math.min(times * 100, 3000),
-    });
-  }
+    enableOfflineQueue: true,
+    connectTimeout: 10000,
+    retryStrategy: (times) => Math.min(times * 100, 3000),
+  });
 
   client.on('connect', () => {
-    console.log('⚡ Redis connected successfully');
+    console.log('✅ Redis connected');
   });
 
   client.on('error', (err) => {
-    if (env.NODE_ENV !== 'test') {
-      console.error('❌ Redis Connection Error:', err.message || err);
-    }
+    console.error('❌ Redis Error:', err);
   });
 
   return client;
 };
 
-export const redis = globalForRedis.redis ?? createRedisInstance();
+export const redis =
+  globalForRedis.redis ?? createRedisInstance();
 
 if (env.NODE_ENV !== 'production') {
   globalForRedis.redis = redis;
