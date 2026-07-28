@@ -5,14 +5,25 @@ const globalForRedis = globalThis as unknown as {
   redis: Redis | undefined;
 };
 
-const createRedisInstance = (): Redis => {
-  const isTest = env.NODE_ENV === 'test';
+export const getRedisOptions = () => {
+  const isUpstash = env.REDIS_HOST.includes('.upstash.io');
+  const useTls = env.REDIS_TLS || isUpstash;
 
-  const client = new Redis({
+  return {
     host: env.REDIS_HOST,
     port: env.REDIS_PORT,
     password: env.REDIS_PASSWORD || undefined,
-    maxRetriesPerRequest: null, // Required by BullMQ
+    tls: useTls ? { rejectUnauthorized: false } : undefined,
+    maxRetriesPerRequest: null,
+  };
+};
+
+const createRedisInstance = (): Redis => {
+  const isTest = env.NODE_ENV === 'test';
+  const options = getRedisOptions();
+
+  const client = new Redis({
+    ...options,
     lazyConnect: false,
     enableOfflineQueue: !isTest,
     connectTimeout: isTest ? 1000 : 10000,
@@ -25,7 +36,7 @@ const createRedisInstance = (): Redis => {
 
   client.on('error', (err) => {
     if (env.NODE_ENV !== 'test') {
-      console.error('❌ Redis Connection Error:', err.message);
+      console.error('❌ Redis Connection Error:', err.message || err);
     }
   });
 

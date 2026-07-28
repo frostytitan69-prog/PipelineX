@@ -7,10 +7,11 @@ import { fileWorker } from './queue/worker';
 
 const startServer = (): void => {
   const app = createApp();
+  const host = '0.0.0.0';
 
-  const server: Server = app.listen(env.PORT, () => {
-    console.log(`🚀 PipelineX Server running on http://localhost:${env.PORT} in ${env.NODE_ENV} mode`);
-    console.log(`🏥 Health Check available at http://localhost:${env.PORT}/api/v1/health`);
+  const server: Server = app.listen(env.PORT, host, () => {
+    console.log(`🚀 PipelineX Server running on http://${host}:${env.PORT} in ${env.NODE_ENV} mode`);
+    console.log(`🏥 Health Check available at http://${host}:${env.PORT}/api/v1/health`);
     console.log(`⚡ BullMQ File Processing Worker initialized`);
   });
 
