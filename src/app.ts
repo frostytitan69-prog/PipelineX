@@ -15,6 +15,9 @@ import { AppError } from './common/errors/app-error';
 export const createApp = (): Application => {
   const app: Application = express();
 
+  // Trust proxy for reverse proxies (Render, Cloudflare, Nginx)
+  app.set('trust proxy', 1);
+
   // Core Security & Compression Middleware
   app.use(
     helmet({
@@ -37,7 +40,23 @@ export const createApp = (): Application => {
     })
   );
 
-  app.use(cors());
+  const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map((origin) => origin.trim())
+    : ['http://localhost:5173', 'http://localhost:3000'];
+
+  app.use(
+    cors({
+      origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+          callback(null, true);
+        } else {
+          callback(null, true);
+        }
+      },
+      credentials: true,
+    })
+  );
+
   app.use(compression({ threshold: 1024 })); // Compress responses > 1KB
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));

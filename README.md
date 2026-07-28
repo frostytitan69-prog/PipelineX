@@ -1,6 +1,24 @@
-# PipelineX V1 — Production-Grade Asynchronous File Processing Engine
+# PipelineX V1 — Production-Grade Asynchronous File Processing SaaS Engine
 
-PipelineX V1 is an enterprise-ready, asynchronous file processing system built with Node.js, Express, TypeScript, Prisma, PostgreSQL 16, Redis 7, BullMQ, Cloudflare R2 / S3 Object Storage, Sharp image processing, and pdf-parse text extraction.
+PipelineX V1 is an enterprise-ready, full-stack asynchronous file processing system built with Express, Node.js, React 19, TypeScript, Vite, Prisma, PostgreSQL 16 (Neon), Redis 7 (Upstash), BullMQ, Cloudflare R2 Object Storage, Sharp image processing, and pdf-parse text extraction.
+
+---
+
+## 🏗️ System Architecture
+
+```mermaid
+graph TD
+    User["🌐 User / Web Client (Vercel)"] -->|HTTPS / REST API| API["🚀 Express API Server (Render)"]
+    API -->|Authenticate JWT| Auth["🔒 Auth Middleware"]
+    API -->|Store User & File Metadata| DB[(🐘 Neon PostgreSQL)]
+    API -->|Store & Cache Files| Redis[(⚡ Upstash Redis Cache)]
+    API -->|Upload Object Payload| R2["☁️ Cloudflare R2 Object Storage"]
+    API -->|Dispatch Job| Queue["📌 BullMQ Queue"]
+    Queue -->|Worker Consumer| Worker["⚡ File Processing Worker"]
+    Worker -->|Sharp / pdf-parse| Handlers["⚙️ Image / PDF / Text Handlers"]
+    Handlers -->|Store Result| DB
+    Handlers -->|Store Thumbnail| R2
+```
 
 ---
 
@@ -29,21 +47,34 @@ PipelineX V1 is an enterprise-ready, asynchronous file processing system built w
 
 - **Milestone 5: Pipeline Processing Handlers**
   - **Image Handler (`sharp`)**: Extracts width, height, format, color space, raw size, and generates 300x300 JPEG thumbnails stored under `thumbnails/{userId}/{uuid}.jpg`.
-  - **PDF Handler (`pdf-parse`)**: Extracts total page count, document info metadata, and text content (first 10k chars).
+  - **PDF Handler (`pdf-parse`)**: Extracts total page count, document info metadata, and text content.
   - **Text Handler**: Computes line count, word count, character count, and stores UTF-8 content.
   - **ProcessingResult API**: `GET /api/v1/files/:id/result` returns processed metadata & presigned thumbnail link.
 
-- **Milestone 6: Admin Dashboard, Queue Monitoring & System Observability**
+- **Milestone 6: Admin Dashboard, Queue Monitoring & Observability**
   - **Admin Dashboard**: `GET /api/v1/admin/dashboard` (aggregated users, files, storage consumption, average processing time).
   - **Queue Telemetry**: `GET /api/v1/admin/queue` (waiting, active, completed, failed, delayed job metrics).
   - **Job Inspection & Manual Retry**: `GET /api/v1/admin/jobs` & `POST /api/v1/admin/jobs/:jobId/retry`.
   - **Structured Logging**: Winston logger outputting to `logs/app.log` and `logs/error.log`.
   - **Enhanced Health Check**: `GET /health` inspecting DB, Redis, Cloudflare R2, BullMQ worker status, memory usage, and Node version.
 
+- **Milestone 7: Security, API Protection, Caching & Performance**
+  - Express rate limiting (`express-rate-limit`) on Auth, Upload, and Admin routes.
+  - Security headers via Helmet (HSTS, CSP, X-Frame-Options, X-Content-Type-Options).
+  - Response compression (`compression`) for responses > 1KB.
+  - Redis cache layer for paginated file queries with automatic invalidation on file mutation.
+
+- **Phase 2: Production Cloud Deployment Readiness**
+  - GitHub Actions CI/CD pipeline (`.github/workflows/ci.yml`).
+  - Production Docker multi-stage builds and Compose orchestration (`docker-compose.prod.yml`).
+  - Cloud platform manifests: `render.yaml` (Backend Engine) and `web/vercel.json` (Frontend Client).
+  - Production cloud infrastructure guide ([docs/deployment.md](file:///g:/PipelineX/docs/deployment.md)).
+
 ---
 
 ## 🛠️ Tech Stack
 
+### Backend Engine
 - **Runtime**: Node.js v20+, TypeScript
 - **Web Framework**: Express v4
 - **Database & ORM**: PostgreSQL 16, Prisma ORM
@@ -52,7 +83,23 @@ PipelineX V1 is an enterprise-ready, asynchronous file processing system built w
 - **Processing Engines**: Sharp, pdf-parse
 - **Logging & Security**: Winston, Helmet, CORS, bcrypt, jsonwebtoken, Zod
 - **Documentation**: Swagger UI (`/api/docs`)
-- **Testing**: Jest, Supertest
+
+### Frontend Dashboard Client
+- **Framework**: React 19, Vite, TypeScript
+- **Styling & UI**: Tailwind CSS v4, Lucide React, Framer Motion
+- **State & Queries**: TanStack Query v5, Axios, React Hook Form, Zod
+
+---
+
+## 🌐 Cloud Deployment Architecture
+
+| Component | Cloud Provider | Blueprint Config |
+| :--- | :--- | :--- |
+| **Frontend Client** | Vercel | [web/vercel.json](file:///g:/PipelineX/web/vercel.json) |
+| **Backend API Engine** | Render | [render.yaml](file:///g:/PipelineX/render.yaml) |
+| **Managed Database** | Neon PostgreSQL | Connection Pooling (`sslmode=require`) |
+| **Managed Queue & Cache** | Upstash Redis | BullMQ & Redis Cache |
+| **Object Storage** | Cloudflare R2 | S3 Compatible Bucket |
 
 ---
 
@@ -63,10 +110,29 @@ Interactive OpenAPI 3.0 documentation is available at:
 
 ---
 
-## 🧪 Running Tests
+## 🧪 Running Tests & Build Commands
+
+### Backend Suite
+```bash
+npm test        # Run Jest unit & integration test suites
+npm run build   # Compile TypeScript to dist/
+```
+
+### Frontend Suite
+```bash
+cd web
+npm test        # Run Vitest unit & integration test suites
+npm run build   # Compile Vite production build
+```
+
+---
+
+## ⚡ Quickstart (Local Production via Docker Compose)
 
 ```bash
-npm test
+docker compose -f docker-compose.prod.yml up -d --build
 ```
-- **Test Suites**: 12/12 Passed
-- **Total Tests**: 48/48 Passed
+
+- **Frontend App**: `http://localhost`
+- **Backend API**: `http://localhost:3000`
+- **Health Check**: `http://localhost:3000/api/v1/health`

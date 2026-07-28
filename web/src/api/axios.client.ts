@@ -1,7 +1,11 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios';
 
+const rawApiUrl = import.meta.env.VITE_API_URL || '';
+const apiBaseUrl = rawApiUrl.replace(/\/+$/, '');
+const baseEndpoint = `${apiBaseUrl}/api/v1`;
+
 export const apiClient = axios.create({
-  baseURL: '/api/v1',
+  baseURL: baseEndpoint,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -73,7 +77,7 @@ apiClient.interceptors.response.use(
       }
 
       try {
-        const response = await axios.post('/api/v1/auth/refresh', { refreshToken });
+        const response = await axios.post(`${baseEndpoint}/auth/refresh`, { refreshToken });
         const payload = response.data?.data || response.data;
         const newAccessToken = payload.accessToken;
         const newRefreshToken = payload.refreshToken;
